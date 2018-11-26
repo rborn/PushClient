@@ -2,17 +2,17 @@
  * MIT License
  * Copyright (c) 2014-present
  * ArlSoft Tecnologia <contato@arlsoft.com.br>
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
  * deal in the Software without restriction, including without limitation the
  * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
  * sell copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -28,7 +28,6 @@ import java.util.HashMap;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
-import android.app.IntentService;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -38,6 +37,8 @@ import android.os.PowerManager;
 import org.appcelerator.kroll.KrollRuntime;
 import org.appcelerator.titanium.TiApplication;
 
+import android.support.v4.app.JobIntentService;
+
 /**
  * This {@code IntentService} does the actual handling of the GCM message.
  * {@code GCMBroadcastReceiver} (a {@code WakefulBroadcastReceiver}) holds a
@@ -45,7 +46,9 @@ import org.appcelerator.titanium.TiApplication;
  * service is finished, it calls {@code completeWakefulIntent()} to release the
  * wake lock.
  */
-public class GCMIntentService extends IntentService {
+public class GCMIntentService extends JobIntentService {
+
+	private static final int JOB_ID = 1000;
 
 	// wakelock
 	private static final String WAKELOCK_KEY = "GCM_LIB";
@@ -62,12 +65,10 @@ public class GCMIntentService extends IntentService {
 	 * mNotificationManager; NotificationCompat.Builder builder;
 	 */
 
-	public GCMIntentService() {
-		super("GCMIntentService");
-	}
+
 
 	@Override
-	protected void onHandleIntent(Intent intent) {
+	protected void onHandleWork(Intent intent) {
 		try {
 			Bundle extras = intent.getExtras();
 
@@ -110,6 +111,12 @@ public class GCMIntentService extends IntentService {
 		}
 	}
 
+
+	private static void enqueueWork(Context context, Intent work) {
+        enqueueWork(context, GCMIntentService.class, JOB_ID, work);
+    }
+
+
 	public static void runIntentInService(Context context, Intent intent, ComponentName comp) {
 		synchronized (LOCK) {
 			if (sWakeLock == null) {
@@ -120,6 +127,6 @@ public class GCMIntentService extends IntentService {
 		}
 		sWakeLock.acquire();
 		intent.setComponent(comp);
-		context.startService(intent);
+		enqueueWork(context, intent);
 	}
 }

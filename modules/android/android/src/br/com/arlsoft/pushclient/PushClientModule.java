@@ -2,17 +2,17 @@
  * MIT License
  * Copyright (c) 2014-present
  * ArlSoft Tecnologia <contato@arlsoft.com.br>
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
  * deal in the Software without restriction, including without limitation the
  * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
  * sell copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -31,6 +31,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import android.annotation.TargetApi;
+
 import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.titanium.TiApplication;
@@ -48,6 +50,7 @@ import com.google.android.gms.gcm.GoogleCloudMessaging;
 
 import android.app.Activity;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -58,9 +61,11 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Build;
 import android.support.v4.app.NotificationCompat;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+
 
 @Kroll.module(name = "PushClient", id = "br.com.arlsoft.pushclient")
 public class PushClientModule extends KrollModule {
@@ -68,6 +73,8 @@ public class PushClientModule extends KrollModule {
 	private static final String PROPERTY_PREFIX = PushClientModule.class.getName();
 	private static final String ModuleName = "PushClient";
 	private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
+	public static final String DEFAULT_CHANNEL_ID = "br.com.arlsoft.pushclient.defaultchannel";
+	public static final String DEFAULT_CHANNEL_NAME = "Push Notifications";
 
 	// Public Events Names
 	@Kroll.constant
@@ -440,6 +447,17 @@ public class PushClientModule extends KrollModule {
 		}
 	}
 
+	@TargetApi(26)
+	private static NotificationChannel createOrUpdateDefaultNotificationChannel() {
+		TiApplication appContext = TiApplication.getInstance();
+		NotificationManager notificationManager = (NotificationManager)appContext.getSystemService(Context.NOTIFICATION_SERVICE);
+		String channelName = TiApplication.getInstance().getAppProperties().getString("pushclient.defaultChannel", DEFAULT_CHANNEL_NAME);
+		NotificationChannel channel = new NotificationChannel(DEFAULT_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_HIGH);
+		notificationManager.createNotificationChannel(channel);
+		return channel;
+	}
+
+
 	public static void sendNotification(Bundle extras) {
 		if (extras == null || extras.isEmpty())
 			return;
@@ -729,7 +747,7 @@ public class PushClientModule extends KrollModule {
 				Log.i(TAG, "Unable to find resource identifier to custom smallIcon : " + extrasRoot.getString("sicon"));
 			}
 		}
-		
+
 		// BIG IMAGE
 		Bitmap bigImage = null;
 		if (extras.containsKey("bigImage")) {
@@ -752,7 +770,14 @@ public class PushClientModule extends KrollModule {
 			launch.setAction("dummy_unique_action_identifyer:" + notificationId);
 
 			PendingIntent contentIntent = PendingIntent.getActivity(appContext, 0, launch, PendingIntent.FLAG_CANCEL_CURRENT);
-			NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(appContext);
+			NotificationCompat.Builder mBuilder = null;
+
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+				mBuilder = new NotificationCompat.Builder(appContext, createOrUpdateDefaultNotificationChannel().getId());
+			}
+			else {
+				mBuilder = new NotificationCompat.Builder(appContext);
+			}
 
 			if(bigImage != null){
 				mBuilder.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(bigImage));
@@ -878,8 +903,8 @@ public class PushClientModule extends KrollModule {
 					mBuilder.setVisibility(Integer.parseInt(extrasRoot.getString("vis")));
 				} catch (NumberFormatException nfe) {
 				}
-			} 
-			
+			}
+
 			//Icon background color
 			int accent_argb = 0xFFFFFFFF;
 			if (extras.containsKey("accentARGB")) {
@@ -927,7 +952,7 @@ public class PushClientModule extends KrollModule {
 					}
 				}
 			}
-			
+
 
 			NotificationManager nm = (NotificationManager) appContext.getSystemService(Context.NOTIFICATION_SERVICE);
 
